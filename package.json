@@ -1,0 +1,71 @@
+{
+  "name": "simple-crm",
+  "productName": "Simple CRM",
+  "version": "2.5.0",
+  "description": "A simple desktop CRM for leads and customers",
+  "author": "Yusuf",
+  "main": "main.js",
+  "scripts": {
+    "start": "npm run bundle && electron .",
+    "dist:win": "npm run bundle && electron-builder --win --x64 --publish never",
+    "bundle": "esbuild main.js --bundle --platform=node --target=node20 --external:electron --outfile=main.bundle.js && esbuild cloud.js --bundle --format=iife --target=chrome120 --minify --outfile=src/cloud.bundle.js"
+  },
+  "build": {
+    "appId": "com.yusuf.simplecrm",
+    "productName": "Simple CRM",
+    "copyright": "Copyright © 2026 Yusuf",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.bundle.js",
+      "preload.js",
+      "src/**/*",
+      "build/icon.png",
+      "!node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Simple CRM",
+      "artifactName": "Simple-CRM-Setup-${version}.exe",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "yilmazyusufziya98-a11y",
+      "repo": "simple-crm",
+      "releaseType": "release"
+    },
+    "extraMetadata": {
+      "main": "main.bundle.js"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.24.2"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "exceljs": "^4.4.0",
+    "firebase": "^11.1.0"
+  },
+  "repository": "https://github.com/yilmazyusufziya98-a11y/simple-crm"
+}

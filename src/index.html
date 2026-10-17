@@ -1,0 +1,1248 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.googleapis.com http://127.0.0.1:9099 http://127.0.0.1:8080">
+<title>Simple CRM</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --sidebar: #1f2a37;
+    --sidebar-text: #c9d3df;
+    --text: #1d2733;
+    --muted: #66727f;
+    --border: #d9dee5;
+    --accent: #2563eb;
+    --accent-soft: #e8efff;
+    --danger: #c62828;
+    --danger-soft: #fdecec;
+    --warn: #b45309;
+    --ok: #15803d;
+    --ok-soft: #e7f6ec;
+    --lead: #b45309;
+    --lead-soft: #fef3c7;
+    --radius: 8px;
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231d2733' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button:hover { border-color: #b9c2cd; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #1d4fd8; }
+  button.danger { color: var(--danger); }
+  button.link { border: none; background: none; padding: 0; color: var(--accent); }
+
+  /* Inputs and dropdowns: dropdowns get a large arrow area on the right */
+  input, select, textarea {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background-color: #fff;
+    font-size: 14px;
+    min-height: 38px;
+  }
+  select {
+    appearance: none;
+    cursor: pointer;
+    padding-right: 52px;
+    background-image: var(--chevron), linear-gradient(#eef2f7, #eef2f7);
+    background-repeat: no-repeat, no-repeat;
+    background-position: right 11px center, right top;
+    background-size: 20px 20px, 42px 100%;
+  }
+  select:hover { background-image: var(--chevron), linear-gradient(#e2e8f0, #e2e8f0); }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .invalid { border-color: var(--danger) !important; background-color: var(--danger-soft); }
+
+  /* ---------- Sidebar ---------- */
+  nav {
+    width: 220px;
+    flex: 0 0 220px;
+    background: var(--sidebar);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 10px;
+    gap: 4px;
+  }
+  nav .brand { color: #fff; font-weight: 700; font-size: 17px; padding: 4px 10px 16px; }
+  nav .item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 9px 10px;
+    border-radius: 6px;
+  }
+  nav .item:hover { background: rgba(255, 255, 255, .07); }
+  nav .item.active { background: rgba(255, 255, 255, .14); color: #fff; }
+  nav .badge { font-size: 12px; background: rgba(255, 255, 255, .15); border-radius: 10px; padding: 0 7px; }
+  nav .spacer { flex: 1; }
+  nav .new { margin: 0 4px 10px; padding: 9px; font-weight: 600; }
+  nav .export { margin: 0 4px 8px; background: #0f9d58; border-color: #0f9d58; color: #fff; }
+
+  /* ---------- Main area ---------- */
+  main { flex: 1; overflow-y: auto; padding: 24px 28px 40px; }
+  h1 { font-size: 22px; margin: 0 0 18px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .muted { color: var(--muted); }
+  .empty { color: var(--muted); padding: 24px; text-align: center; }
+
+  /* Dashboard */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile .label { color: var(--muted); font-size: 13px; }
+  .tile .value { font-size: 24px; font-weight: 600; margin-top: 2px; }
+  .tile.money .value { color: var(--ok); }
+  .dash { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .event { display: flex; gap: 14px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; cursor: pointer; }
+  .event:hover { border-color: var(--accent); }
+  .event .date { width: 64px; flex: 0 0 64px; text-align: center; border-radius: 6px; background: var(--accent-soft); color: var(--accent); padding: 4px 0; }
+  .event .date .d { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .event .date .m { font-size: 11px; text-transform: uppercase; font-weight: 600; }
+  .event.service .date { background: var(--ok-soft); color: var(--ok); }
+  .event .what { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .event .who { font-weight: 600; }
+  .event.soon { border-color: #f59e0b; background: #fffbeb; }
+  .overdue-box { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--danger-soft); color: var(--danger); }
+  .overdue-box a { color: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
+  .uncontacted { border-color: #f3b4b4; background: var(--danger-soft); }
+  .uncontacted h2 { color: var(--danger); }
+  .uncontacted .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid #f3c9c9; cursor: pointer; }
+  .uncontacted .row:hover .who { text-decoration: underline; }
+  .uncontacted .who { font-weight: 600; }
+  .all-done { border-color: #a7dbb8; background: var(--ok-soft); text-align: center; padding: 28px 16px; }
+  .all-done .check { width: 54px; height: 54px; line-height: 54px; margin: 0 auto 8px; border-radius: 50%; background: var(--ok); color: #fff; font-size: 30px; }
+  .all-done h2 { color: var(--ok); margin: 0; }
+
+  /* Lists */
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .toolbar input[type=search] { flex: 1; min-width: 220px; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: #fafbfc; cursor: pointer; user-select: none; white-space: nowrap; }
+  th:hover { color: var(--text); }
+  th.sorted { color: var(--accent); }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #f7f9fc; }
+  tbody tr:last-child td { border-bottom: none; }
+  td .sub { color: var(--muted); font-size: 12px; }
+  td.num { text-align: right; white-space: nowrap; font-weight: 600; }
+  td.nowrap { white-space: nowrap; }
+  .overdue { color: var(--danger); font-weight: 600; }
+  .today { color: var(--warn); font-weight: 600; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); margin-left: 6px; vertical-align: middle; }
+  .tag { display: inline-block; background: #eef1f4; border-radius: 4px; padding: 0 6px; margin: 2px 4px 0 0; font-size: 12px; }
+
+  /* Detail page */
+  .detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .detail-head h1 { margin: 0; flex: 1; }
+  .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+  .segmented button { border: none; border-radius: 0; padding: 7px 16px; font-weight: 600; color: var(--muted); }
+  .segmented button + button { border-left: 1px solid var(--border); }
+  .segmented button.on.lead { background: var(--lead-soft); color: var(--lead); }
+  .segmented button.on.customer { background: var(--ok-soft); color: var(--ok); }
+  .detail { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: start; }
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .form .full { grid-column: 1 / -1; }
+  .form label, .field-label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .form label .req { color: var(--danger); }
+  .form textarea { min-height: 90px; resize: vertical; }
+  .section-title { grid-column: 1 / -1; margin: 10px 0 -4px; font-size: 13px; font-weight: 700; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  .section-title:first-child { margin-top: 0; }
+  .saved { font-size: 12px; color: var(--ok); opacity: 0; transition: opacity .3s; }
+  .saved.show { opacity: 1; }
+  .contacted-toggle { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; font-size: 14px !important; color: var(--text) !important; }
+  .contacted-toggle input { width: 18px; height: 18px; min-height: 0; }
+
+  .services { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
+  .service-row { display: grid; grid-template-columns: 1fr 190px 38px; gap: 8px; align-items: end; }
+  .money-input { position: relative; }
+  .money-input span { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+  .money-input input { width: 100%; padding-left: 22px; }
+  .service-row .remove { height: 38px; color: var(--danger); padding: 0; }
+  .services-foot { display: flex; justify-content: space-between; align-items: center; }
+  .services-foot .total { font-weight: 700; }
+
+  /* Address autocomplete */
+  .address { position: relative; }
+  .address input { width: 100%; }
+  .suggestions {
+    position: absolute; z-index: 10; left: 0; right: 0; top: calc(100% + 2px);
+    background: #fff; border: 1px solid var(--border); border-radius: 6px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .12); overflow: hidden;
+  }
+  .suggestions div { padding: 9px 12px; cursor: pointer; color: var(--text); font-weight: 400; font-size: 14px; }
+  .suggestions div.active, .suggestions div:hover { background: var(--accent-soft); }
+  .suggestions .note { color: var(--muted); cursor: default; font-size: 12px; }
+  .suggestions .note:hover { background: none; }
+
+  .log-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .log-form textarea { grid-column: 1 / -1; min-height: 60px; resize: vertical; }
+  .log-form button { grid-column: 1 / -1; }
+  .activity { border-top: 1px solid var(--border); padding: 10px 0; }
+  .activity .meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .activity .text { white-space: pre-wrap; margin-top: 2px; }
+  .activity .del { visibility: hidden; color: var(--danger); }
+  .activity:hover .del { visibility: visible; }
+
+  /* New contact dialog */
+  dialog { border: none; border-radius: 12px; padding: 24px; width: min(560px, calc(100vw - 32px)); box-shadow: 0 20px 50px rgba(0, 0, 0, .3); }
+  dialog::backdrop { background: rgba(15, 23, 42, .45); }
+  dialog h2 { font-size: 19px; margin: 0 0 4px; }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0; }
+  .choice { padding: 22px 14px; border: 2px solid var(--border); border-radius: 10px; text-align: center; font-size: 16px; font-weight: 600; }
+  .choice small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .choice:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .choices.sources { grid-template-columns: 1fr 1fr; }
+  .choices.sources .choice { padding: 14px; font-size: 15px; }
+  .dialog-foot { display: flex; justify-content: space-between; }
+
+  dialog.msg { width: min(440px, calc(100vw - 32px)); }
+  dialog.msg p { margin: 0 0 18px; white-space: pre-wrap; font-size: 15px; }
+  dialog.msg .row { display: flex; justify-content: flex-end; gap: 8px; }
+  button.primary.danger-btn { background: var(--danger); border-color: var(--danger); }
+
+  .settings-grid { display: grid; gap: 16px; max-width: 680px; }
+  .settings-grid label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+  .settings-grid .hint { font-weight: 400; color: var(--muted); font-size: 13px; }
+  .settings-grid .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .settings-grid textarea { resize: vertical; }
+
+  /* Login */
+  #login {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #1f2a37, #2563eb);
+  }
+  #login[hidden] { display: none; }
+  .login-card { width: min(380px, calc(100vw - 32px)); background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 24px 60px rgba(0, 0, 0, .35); }
+  .login-card h1 { margin: 0 0 4px; }
+  .login-card form { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+  .login-card label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .login-card .primary { padding: 10px; font-weight: 600; }
+  .login-card .remember { flex-direction: row; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; color: var(--text); cursor: pointer; }
+  .login-card .remember input { width: 17px; height: 17px; min-height: 0; margin: 0; }
+  .login-card .switch { display: flex; justify-content: space-between; margin-top: 14px; font-size: 13px; }
+  .login-msg { font-size: 13px; padding: 8px 10px; border-radius: 6px; }
+  .login-msg.error { background: var(--danger-soft); color: var(--danger); }
+  .login-msg.info { background: var(--ok-soft); color: var(--ok); }
+  .loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+  .loading[hidden] { display: none; }
+  .update-bar {
+    position: fixed; right: 20px; bottom: 20px; z-index: 40;
+    display: flex; align-items: center; gap: 12px;
+    background: var(--sidebar); color: #fff; padding: 12px 16px; border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+  }
+  .update-bar[hidden] { display: none; }
+  .login-card .address { display: block; }
+  .login-card .suggestions div { display: flex; gap: 8px; align-items: center; }
+  .login-card .suggestions .key { font-size: 13px; }
+  .suggestions[hidden] { display: none; }
+  nav .account { padding: 8px 10px 4px; font-size: 12px; color: #8b97a6; word-break: break-all; border-top: 1px solid rgba(255, 255, 255, .1); margin-top: 6px; }
+  nav .account .sync { display: block; margin-top: 2px; }
+  nav .signout { background: none; border: none; color: #8b97a6; padding: 2px 10px 0; text-align: left; font-size: 12px; text-decoration: underline; }
+
+  @media (max-width: 1050px) {
+    .dash, .detail { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<nav>
+  <div class="brand">Simple CRM</div>
+  <button class="primary new" id="new-contact">+ New</button>
+  <button class="item" data-view="dashboard">Dashboard</button>
+  <button class="item" data-view="leads">Leads <span class="badge" id="count-leads">0</span></button>
+  <button class="item" data-view="customers">Customers <span class="badge" id="count-customers">0</span></button>
+  <button class="item" data-view="trash">🗑 Trash <span class="badge" id="count-trash">0</span></button>
+  <div class="spacer"></div>
+  <button class="export" id="export-sheets">Export to Google Sheets</button>
+  <button class="item" data-view="settings">Settings &amp; backup</button>
+  <div class="account"><span id="account-email"></span><span class="sync" id="sync-status"></span></div>
+  <button class="signout" id="sign-out">Sign out</button>
+</nav>
+<main id="main"></main>
+
+<dialog id="new-dialog"></dialog>
+<dialog id="msg-dialog" class="msg"></dialog>
+
+<div id="login" hidden>
+  <div class="login-card">
+    <h1>Simple CRM</h1>
+    <div class="muted" id="login-sub">Sign in to your account</div>
+    <form id="login-form">
+      <div class="login-msg" id="login-msg" hidden></div>
+      <label>Email <span class="address"><input type="email" id="login-email" autocomplete="off" required><span class="suggestions" id="login-suggest" hidden></span></span></label>
+      <label>Password <input type="password" id="login-password" autocomplete="current-password" required minlength="6"></label>
+      <label class="remember"><input type="checkbox" id="login-remember" checked> Remember me</label>
+      <button class="primary" type="submit" id="login-submit">Sign in</button>
+    </form>
+    <div class="switch">
+      <button class="link" id="login-mode">Create an account</button>
+      <button class="link" id="login-forgot">Forgot password?</button>
+    </div>
+  </div>
+</div>
+<div class="loading" id="loading">Loading…</div>
+<div class="update-bar" id="update-bar" hidden></div>
+
+<script src="cloud.bundle.js"></script>
+
+<script>
+// ================= Data =================
+
+const ACTIVITY_TYPES = ["Call", "Text message", "Email", "Meeting", "Door knock", "Note"];
+const CONTACT_TYPES = ["Call", "Text message", "Email", "Meeting", "Door knock"]; // these count as "contacted"
+
+const defaultSettings = () => ({
+  serviceTypes: ["Yard cleanup", "Lawn maintenance", "Weed removal"],
+  leadSources: ["Facebook ads", "Instagram ads", "Door to door", "Yard sign", "Car magnet", "Nextdoor", "Website SEO"],
+  cities: ["Richmond Hill", "Markham", "Vaughan", "Woodbridge", "Thornhill", "Aurora", "Newmarket"],
+  googleApiKey: "",
+});
+
+const api = window.crmAPI ?? null; // provided by preload.js in the desktop app
+const LOCAL_KEY = "simple-crm-v2";
+let data = null;
+
+// Brings records saved by older versions of the app up to date
+function migrate(c) {
+  c.services ??= c.serviceType || c.quotePrice ? [{ id: uid(), type: c.serviceType ?? "", price: c.quotePrice ?? "" }] : [];
+  c.leadSource ??= c.source ?? "";
+  c.nextMeetingDate ??= c.nextDate ?? "";
+  c.nextMeetingReason ??= c.nextReason ?? "";
+  c.nextServiceDate ??= "";
+  c.city ??= "";
+  c.province ??= "ON";
+  c.postalCode ??= "";
+  c.tags ??= [];
+  c.activities ??= [];
+  c.contacted ??= c.activities.length > 0 || c.kind === "customer";
+  c.createdKind ??= c.kind;
+  if (c.kind === "customer") c.becameCustomerAt ??= c.wonAt ?? c.createdAt;
+  for (const k of ["company", "serviceType", "quotePrice", "dealValue", "source", "nextDate", "nextReason", "status", "wonAt"]) delete c[k];
+  return c;
+}
+
+async function load() {
+  try {
+    const loaded = api ? await api.load() : JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
+    if (loaded) {
+      return { owner: loaded.owner, contacts: (loaded.contacts ?? []).map(migrate), settings: { ...defaultSettings(), ...loaded.settings } };
+    }
+  } catch (e) { console.error(e); }
+  return { contacts: [], settings: defaultSettings() };
+}
+
+let pushTimer;
+function save() {
+  // A local copy on this computer (works as an offline backup)…
+  if (api) api.save(data).catch(err => notify("Could not save: " + err.message));
+  else try { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); } catch (e) {}
+  // …and the cloud copy, so other computers see the change
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => window.cloud.push(data.contacts, data.settings), 400);
+  updateCounts();
+}
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const byId = id => data.contacts.find(c => c.id === id);
+
+// Deleted contacts go to the Trash (deletedAt is set) and are removed for good after 60 days
+const TRASH_DAYS = 60;
+const live = () => data.contacts.filter(c => !c.deletedAt);
+const trashed = () => data.contacts.filter(c => c.deletedAt);
+const trashDaysLeft = c => Math.max(0, TRASH_DAYS - Math.floor((Date.now() - new Date(c.deletedAt)) / 86400000));
+
+function purgeOldTrash() {
+  const before = data.contacts.length;
+  data.contacts = data.contacts.filter(c => !c.deletedAt || trashDaysLeft(c) > 0);
+  if (data.contacts.length !== before) save();
+}
+
+function newContact(kind, leadSource = "") {
+  const now = new Date().toISOString();
+  return {
+    id: uid(), kind, createdKind: kind,
+    name: "", phone: "", email: "", address: "", city: "", province: "ON", postalCode: "",
+    leadSource, services: [{ id: uid(), type: "", price: "" }],
+    nextServiceDate: "", nextMeetingDate: "", nextMeetingReason: "",
+    tags: [], notes: "", contacted: kind === "customer",
+    activities: [], createdAt: now, updatedAt: now,
+    becameCustomerAt: kind === "customer" ? now : undefined,
+  };
+}
+
+const REQUIRED = { name: "Name", phone: "Phone number", address: "Address" };
+const missingFields = c => Object.keys(REQUIRED).filter(k => !String(c[k] ?? "").trim());
+
+// ================= Messages =================
+// In-app message boxes. On Windows, Electron's built-in pop-up boxes can leave
+// text boxes unclickable afterwards, so the app never uses them.
+
+const msgDialog = document.getElementById("msg-dialog");
+const msgQueue = [];
+
+function showNext() {
+  if (msgDialog.open || !msgQueue.length) return;
+  const { text, okLabel, cancel, resolve, danger } = msgQueue.shift();
+  const done = value => { msgDialog.close(); resolve(value); setTimeout(showNext); };
+  const ok = h("button", { class: danger ? "primary danger-btn" : "primary", onclick: () => done(true) }, okLabel);
+  msgDialog.replaceChildren(h("p", {}, text),
+    h("div", { class: "row" }, cancel ? h("button", { onclick: () => done(false) }, "Cancel") : null, ok));
+  msgDialog.oncancel = e => { e.preventDefault(); done(false); }; // Esc key
+  msgDialog.showModal();
+  ok.focus();
+}
+
+const notify = text => new Promise(resolve => { msgQueue.push({ text, okLabel: "OK", resolve }); showNext(); });
+const ask = (text, okLabel = "OK", danger = false) =>
+  new Promise(resolve => { msgQueue.push({ text, okLabel, cancel: true, resolve, danger }); showNext(); });
+
+// ================= Helpers =================
+
+// Tiny element builder: h("div", {class: "x", onclick}, child, "text", ...)
+function h(tag, props = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props ?? {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "class") el.className = v;
+    else if (k === "style") el.style.cssText = v;
+    else if (k === "value") el.value = v;
+    else if (k in el && typeof v !== "string") el[k] = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of children.flat()) if (c != null && c !== false) el.append(c instanceof Node ? c : String(c));
+  return el;
+}
+
+const cad = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" });
+const money = n => cad.format(Number.isFinite(n) ? n : 0);
+const servicesTotal = c => c.services.reduce((s, x) => s + (parseFloat(x.price) || 0), 0);
+
+// Date-only strings ("2026-10-20") must be read as local dates, not UTC
+const parseDate = v => (v ? new Date(v.length === 10 ? v + "T00:00" : v) : null);
+const startOfDay = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const daysFromToday = v => Math.round((startOfDay(parseDate(v)) - startOfDay(new Date())) / 86400000);
+
+function dateLabel(value) {
+  const d = parseDate(value);
+  if (!d || isNaN(d)) return "";
+  const days = daysFromToday(value);
+  const time = value.length > 10 ? " " + d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" }) : "";
+  if (days === 0) return "Today" + time;
+  if (days === 1) return "Tomorrow" + time;
+  if (days === -1) return "Yesterday" + time;
+  return d.toLocaleDateString("en-CA", { weekday: "short", day: "numeric", month: "short",
+    year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined }) + time;
+}
+
+const dueClass = v => !v ? "" : daysFromToday(v) < 0 ? "overdue" : daysFromToday(v) === 0 ? "today" : "";
+
+function isThisMonth(value) {
+  const d = parseDate(value), now = new Date();
+  return !!d && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+
+function stats() {
+  const customers = live().filter(c => c.kind === "customer");
+  const leads = live().filter(c => c.kind === "lead");
+  const revenue = customers.reduce((s, c) => s + servicesTotal(c), 0);
+  return {
+    customers: customers.length,
+    leads: leads.length,
+    notContacted: leads.filter(c => !c.contacted).length,
+    leadsThisMonth: live().filter(c => c.createdKind === "lead" && isThisMonth(c.createdAt)).length,
+    customersThisMonth: customers.filter(c => isThisMonth(c.becameCustomerAt)).length,
+    revenue,
+    potential: revenue + leads.reduce((s, c) => s + servicesTotal(c), 0),
+  };
+}
+
+// ================= Navigation =================
+
+const main = document.getElementById("main");
+let view = { name: "dashboard" };
+
+// Required fields must be filled before leaving a contact's page
+function canLeave() {
+  if (!data || view.name !== "detail") return true;
+  const c = byId(view.id);
+  if (!c) return true;
+  const missing = missingFields(c);
+  if (!missing.length) return true;
+  const untouched = !c.name && !c.phone && !c.address && !c.email && !c.notes && !c.activities.length;
+  if (untouched) { data.contacts = data.contacts.filter(x => x.id !== c.id); save(); return true; }
+  notify(`Please fill in: ${missing.map(k => REQUIRED[k]).join(", ")}.\n\n(Or delete this contact if you don't need it.)`)
+    .then(() => main.querySelector(".invalid")?.focus());
+  return false;
+}
+
+function go(next) {
+  if (!canLeave()) return;
+  view = next;
+  document.querySelectorAll("nav .item").forEach(b =>
+    b.classList.toggle("active", b.dataset.view === (view.name === "detail" ? byId(view.id)?.kind + "s" : view.name)));
+  main.innerHTML = "";
+  main.scrollTop = 0;
+  ({ dashboard: renderDashboard, leads: () => renderList("lead"), customers: () => renderList("customer"),
+     detail: renderDetail, settings: renderSettings, trash: renderTrash })[view.name]();
+}
+
+function updateCounts() {
+  document.getElementById("count-leads").textContent = live().filter(c => c.kind === "lead").length;
+  document.getElementById("count-customers").textContent = live().filter(c => c.kind === "customer").length;
+  document.getElementById("count-trash").textContent = trashed().length;
+}
+
+document.querySelectorAll("nav .item").forEach(b => b.addEventListener("click", () => go({ name: b.dataset.view })));
+
+// ================= New contact: Lead or Customer? =================
+
+const newDialog = document.getElementById("new-dialog");
+
+function createAndOpen(kind, source) {
+  newDialog.close();
+  const c = newContact(kind, source);
+  data.contacts.push(c);
+  save();
+  go({ name: "detail", id: c.id, isNew: true });
+}
+
+function openNewDialog() {
+  if (!canLeave()) return;
+  newDialog.replaceChildren(
+    h("h2", {}, "Add someone new"),
+    h("div", { class: "muted" }, "Is this a lead or a customer?"),
+    h("div", { class: "choices" },
+      h("button", { class: "choice", onclick: chooseSource }, "Lead", h("small", {}, "Interested, not a customer yet")),
+      h("button", { class: "choice", onclick: () => createAndOpen("customer") }, "Customer", h("small", {}, "Already buying a service"))),
+    h("div", { class: "dialog-foot" }, h("span"), h("button", { onclick: () => newDialog.close() }, "Cancel")));
+  newDialog.showModal();
+}
+
+function chooseSource() {
+  newDialog.replaceChildren(
+    h("h2", {}, "New lead"),
+    h("div", { class: "muted" }, "How did they find you?"),
+    h("div", { class: "choices sources" },
+      data.settings.leadSources.map(s => h("button", { class: "choice", onclick: () => createAndOpen("lead", s) }, s))),
+    h("div", { class: "dialog-foot" },
+      h("button", { onclick: openNewDialog }, "← Back"),
+      h("button", { onclick: () => newDialog.close() }, "Cancel")));
+}
+
+document.getElementById("new-contact").addEventListener("click", openNewDialog);
+
+// ================= Dashboard =================
+
+function renderDashboard() {
+  const s = stats();
+  const tile = (label, value, cls) => h("div", { class: "panel tile " + (cls ?? "") },
+    h("div", { class: "label" }, label), h("div", { class: "value" }, value));
+
+  // Every upcoming meeting and service date, soonest first
+  const events = live().flatMap(c => [
+    c.nextMeetingDate && { c, kind: "meeting", date: c.nextMeetingDate, what: c.nextMeetingReason || "Meeting" },
+    c.nextServiceDate && { c, kind: "service", date: c.nextServiceDate, what: c.services.map(x => x.type).filter(Boolean).join(", ") || "Service" },
+  ].filter(Boolean)).sort((a, b) => a.date.localeCompare(b.date));
+  const upcoming = events.filter(e => daysFromToday(e.date) >= 0).slice(0, 3);
+  const overdue = events.filter(e => daysFromToday(e.date) < 0);
+
+  const eventCard = e => {
+    const d = parseDate(e.date);
+    const days = daysFromToday(e.date);
+    return h("div", { class: `event ${e.kind} ${days <= 1 ? "soon" : ""}`, onclick: () => go({ name: "detail", id: e.c.id }) },
+      h("div", { class: "date" },
+        h("div", { class: "m" }, d.toLocaleDateString("en-CA", { month: "short" })),
+        h("div", { class: "d" }, d.getDate())),
+      h("div", {},
+        h("div", { class: "what" }, e.kind === "meeting" ? "Meeting" : "Service", " · ", dateLabel(e.date)),
+        h("div", { class: "who" }, e.c.name, h("span", { class: "muted" }, ` · ${e.c.kind === "lead" ? "Lead" : "Customer"}`)),
+        h("div", { class: "muted" }, e.what, e.c.city ? ` · ${e.c.city}` : "")));
+  };
+
+  const comingUp = h("div", { class: "panel" },
+    h("h2", {}, "⚠ Coming up next"),
+    upcoming.length ? upcoming.map(eventCard)
+      : h("div", { class: "empty" }, "Nothing scheduled. Add a next meeting or next service date to a lead or customer."),
+    overdue.length ? h("div", { class: "overdue-box" },
+      `${overdue.length} past date${overdue.length > 1 ? "s" : ""} not updated: `,
+      overdue.slice(0, 5).map((e, i) => [i ? ", " : "", h("a", { onclick: () => go({ name: "detail", id: e.c.id }) },
+        `${e.c.name} (${e.kind}, ${dateLabel(e.date)})`)]),
+      overdue.length > 5 ? " …" : "") : null);
+
+  const notContacted = live().filter(c => c.kind === "lead" && !c.contacted)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const contactPanel = notContacted.length
+    ? h("div", { class: "panel uncontacted" },
+        h("h2", {}, `Leads not contacted yet (${notContacted.length})`),
+        notContacted.map(c => h("div", { class: "row", onclick: () => go({ name: "detail", id: c.id }) },
+          h("div", {},
+            h("div", { class: "who" }, c.name),
+            h("div", { class: "muted" }, [c.phone, c.leadSource, `added ${dateLabel(c.createdAt.slice(0, 10)).toLowerCase()}`].filter(Boolean).join(" · "))),
+          h("button", { onclick: e => {
+            e.stopPropagation();
+            c.contacted = true;
+            c.updatedAt = new Date().toISOString();
+            save();
+            go({ name: "dashboard" });
+          } }, "✓ Mark contacted"))))
+    : h("div", { class: "panel all-done" }, h("div", { class: "check" }, "✓"), h("h2", {}, "No leads left to contact"),
+        h("div", { class: "muted" }, "Every lead has been contacted."));
+
+  main.append(
+    h("h1", {}, "Dashboard"),
+    h("div", { class: "tiles" },
+      tile("Monthly revenue", money(s.revenue), "money"),
+      tile("Potential monthly revenue", money(s.potential)),
+      tile("Customers", s.customers),
+      tile("New leads this month", s.leadsThisMonth),
+      tile("New customers this month", s.customersThisMonth)),
+    h("div", { class: "dash" }, comingUp, contactPanel));
+}
+
+// ================= Lists =================
+
+const COLUMNS = [
+  { key: "name", label: "Name", value: c => c.name.toLocaleLowerCase(),
+    cell: c => [h("b", {}, c.name), c.kind === "lead" && !c.contacted ? h("span", { class: "dot", title: "Not contacted yet" }) : null] },
+  { key: "city", label: "City", value: c => c.city.toLocaleLowerCase(), cell: c => c.city },
+  { key: "address", label: "Address", value: c => c.address.toLocaleLowerCase(),
+    cell: c => [c.address, c.postalCode && h("div", { class: "sub" }, c.postalCode)] },
+  { key: "nextServiceDate", label: "Next service due", value: c => c.nextServiceDate || null,
+    cell: c => c.nextServiceDate && h("span", { class: dueClass(c.nextServiceDate) }, dateLabel(c.nextServiceDate)), nowrap: true },
+  { key: "nextMeetingDate", label: "Next meeting due", value: c => c.nextMeetingDate || null,
+    cell: c => c.nextMeetingDate && [h("div", { class: dueClass(c.nextMeetingDate) }, dateLabel(c.nextMeetingDate)),
+      c.nextMeetingReason && h("div", { class: "sub" }, c.nextMeetingReason)], nowrap: true },
+  { key: "phone", label: "Phone number", value: c => c.phone.replace(/\D/g, ""), cell: c => c.phone, nowrap: true },
+  { key: "price", label: "Service price", value: c => servicesTotal(c), num: true,
+    cell: c => servicesTotal(c) ? [money(servicesTotal(c)), c.services.length > 1 ? h("div", { class: "sub" }, `${c.services.length} services`) : null] : "" },
+  { key: "tags", label: "Tags", value: c => c.tags.join(",").toLocaleLowerCase(), cell: c => c.tags.map(t => h("span", { class: "tag" }, t)) },
+];
+
+const listState = {
+  lead: { q: "", city: "", service: "", sort: "name", dir: 1 },
+  customer: { q: "", city: "", service: "", sort: "name", dir: 1 },
+};
+
+function matches(c, q) {
+  if (!q) return true;
+  const hay = [c.name, c.phone, c.email, c.address, c.city, c.postalCode, c.leadSource, c.notes, c.nextMeetingReason, ...c.tags,
+    ...c.services.map(s => s.type), ...c.activities.map(a => a.text)].join(" ").toLocaleLowerCase();
+  return q.toLocaleLowerCase().split(/\s+/).every(word => hay.includes(word));
+}
+
+function renderList(kind) {
+  const st = listState[kind];
+
+  const tableWrap = h("div");
+  const draw = () => {
+    const col = COLUMNS.find(c => c.key === st.sort);
+    const rows = live()
+      .filter(c => c.kind === kind && matches(c, st.q) && (!st.city || c.city === st.city)
+        && (!st.service || c.services.some(s => s.type === st.service)))
+      .sort((a, b) => {
+        const x = col.value(a), y = col.value(b);
+        if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1; // empty dates always last
+        return (x < y ? -1 : x > y ? 1 : 0) * st.dir;
+      });
+    tableWrap.innerHTML = "";
+    if (!rows.length) {
+      tableWrap.append(h("div", { class: "panel empty" },
+        live().some(c => c.kind === kind) ? "Nothing matches your search."
+          : `No ${kind}s yet. Click "+ New" to add one.`));
+      return;
+    }
+    tableWrap.append(h("table", {},
+      h("thead", {}, h("tr", {}, COLUMNS.map(c => h("th", {
+        class: [c.num ? "num" : "", st.sort === c.key ? "sorted" : ""].join(" "),
+        title: "Click to sort",
+        onclick: () => { st.dir = st.sort === c.key ? -st.dir : 1; st.sort = c.key; draw(); },
+      }, c.label, st.sort === c.key ? (st.dir > 0 ? " ▲" : " ▼") : "")))),
+      h("tbody", {}, rows.map(r => h("tr", { onclick: () => go({ name: "detail", id: r.id }) },
+        COLUMNS.map(c => h("td", { class: [c.num ? "num" : "", c.nowrap ? "nowrap" : ""].join(" ") }, c.cell(r) || "")))))));
+  };
+
+  const search = h("input", { type: "search", placeholder: "Search name, address, phone, notes…", value: st.q,
+    oninput: e => { st.q = e.target.value; draw(); } });
+  const citySel = h("select", { onchange: e => { st.city = e.target.value; draw(); } },
+    h("option", { value: "" }, "All cities"), data.settings.cities.map(x => h("option", { value: x }, x)));
+  citySel.value = st.city;
+  const serviceSel = h("select", { onchange: e => { st.service = e.target.value; draw(); } },
+    h("option", { value: "" }, "All services"), data.settings.serviceTypes.map(x => h("option", { value: x }, x)));
+  serviceSel.value = st.service;
+  const sortSel = h("select", { title: "Sort by", onchange: e => { st.sort = e.target.value; st.dir = 1; draw(); } },
+    COLUMNS.map(c => h("option", { value: c.key }, "Sort: " + c.label)));
+  sortSel.value = st.sort;
+
+  main.append(h("h1", {}, kind === "lead" ? "Leads" : "Customers"),
+    h("div", { class: "toolbar" }, search, citySel, serviceSel, sortSel), tableWrap);
+  draw();
+  search.focus();
+}
+
+// ================= Address autocomplete =================
+
+function addressInput(c, onPick) {
+  const input = h("input", { type: "text", value: c.address, autocomplete: "off",
+    placeholder: "Start typing, e.g. 215 Browndale" });
+  // (Address search fills Street, City, Province and Postal code separately)
+  const box = h("div", { class: "suggestions", hidden: true });
+  let timer, results = [], active = -1, seq = 0;
+
+  const close = () => { box.hidden = true; active = -1; };
+  const show = (items, note) => {
+    box.replaceChildren(...items.map((r, i) => h("div", {
+      class: i === active ? "active" : "",
+      onmousedown: e => { e.preventDefault(); pick(r); },
+    }, r.label)), note ? h("div", { class: "note" }, note) : "");
+    box.hidden = !items.length && !note;
+  };
+
+  async function pick(r) {
+    close();
+    let chosen = r;
+    if (r.placeId) {
+      try { chosen = await api.addressDetails(r.placeId, data.settings.googleApiKey); } catch (e) { console.error(e); }
+    }
+    input.value = chosen.street || chosen.label;
+    onPick(chosen);
+  }
+
+  input.addEventListener("input", () => {
+    onPick({ label: input.value, typed: true });
+    clearTimeout(timer);
+    if (!api || input.value.trim().length < 3) return close();
+    timer = setTimeout(async () => {
+      const mine = ++seq;
+      show([], "Searching…");
+      try {
+        results = await api.searchAddress(input.value, data.settings.googleApiKey);
+        if (mine !== seq) return; // a newer search has started
+        active = -1;
+        show(results, results.length ? "" : "No matching address found. You can type it in full.");
+      } catch (e) {
+        if (mine === seq) show([], "Address search isn't available right now. You can type it in full.");
+      }
+    }, 300);
+  });
+  input.addEventListener("keydown", e => {
+    if (box.hidden || !results.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      active = (active + (e.key === "ArrowDown" ? 1 : -1) + results.length) % results.length;
+      show(results);
+    } else if (e.key === "Enter" && active >= 0) {
+      e.preventDefault();
+      pick(results[active]);
+    } else if (e.key === "Escape") close();
+  });
+  input.addEventListener("blur", () => setTimeout(close, 150));
+
+  return { el: h("div", { class: "address" }, input, box), input };
+}
+
+// Find which of our cities an address belongs to
+function cityFromAddress(text, cityHint) {
+  const hay = `${cityHint ?? ""} ${text}`.toLocaleLowerCase();
+  return data.settings.cities.find(city => hay.includes(city.toLocaleLowerCase())) ?? "";
+}
+
+// ================= Detail page =================
+
+function renderDetail() {
+  const c = byId(view.id);
+  if (!c) { view = { name: "leads" }; return go(view); }
+  const isLead = c.kind === "lead";
+  const priceLabel = isLead ? "Quote amount" : "Service price";
+  const savedFlag = h("span", { class: "saved" }, "✓ Saved");
+  let savedTimer;
+
+  const touch = () => {
+    c.updatedAt = new Date().toISOString();
+    save();
+    savedFlag.classList.add("show");
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => savedFlag.classList.remove("show"), 1200);
+  };
+
+  const markRequired = (input, key) => {
+    const check = () => input.classList.toggle("invalid", key in REQUIRED && !String(c[key] ?? "").trim());
+    check();
+    input.addEventListener("input", check);
+    return check;
+  };
+
+  // A labelled input bound to c[key]; saves as you type
+  const field = (label, key, opts = {}) => {
+    const tag = opts.textarea ? "textarea" : opts.options ? "select" : "input";
+    const input = h(tag, { type: opts.type ?? "text", placeholder: opts.placeholder ?? "" });
+    if (opts.options) opts.options.forEach(o => input.append(h("option", { value: o }, o || opts.empty || "—")));
+    input.value = c[key] ?? "";
+    input.addEventListener(opts.options ? "change" : "input", () => { c[key] = input.value; opts.after?.(); touch(); });
+    markRequired(input, key);
+    return h("label", { class: opts.full ? "full" : null },
+      h("span", {}, label, key in REQUIRED ? h("span", { class: "req" }, " *") : null), input);
+  };
+
+  // City dropdown (also filled in automatically from the address)
+  const cityField = field("City", "city", { options: ["", ...new Set([...data.settings.cities, c.city].filter(Boolean))], empty: "Choose city…" });
+  const citySelect = cityField.querySelector("select");
+
+  const provinceField = field("Province", "province", { placeholder: "ON" });
+  const postalField = field("Postal code", "postalCode", { placeholder: "e.g. L4C 3H9" });
+  const postalInput = postalField.querySelector("input");
+  postalInput.addEventListener("blur", () => {
+    // Canadian format: A1A 1A1
+    const v = postalInput.value.toUpperCase().replace(/\s+/g, "");
+    postalInput.value = /^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(v) ? `${v.slice(0, 3)} ${v.slice(3)}` : postalInput.value.toUpperCase();
+    if (postalInput.value !== c.postalCode) { c.postalCode = postalInput.value; touch(); }
+  });
+
+  const address = addressInput(c, picked => {
+    c.address = picked.typed ? picked.label : picked.street || picked.label;
+    if (!picked.typed) {
+      const city = cityFromAddress(picked.label, picked.city) || picked.city;
+      if (city) {
+        if (![...citySelect.options].some(o => o.value === city)) citySelect.append(h("option", { value: city }, city));
+        c.city = city;
+        citySelect.value = city;
+      }
+      if (picked.province) { c.province = picked.province; provinceField.querySelector("input").value = picked.province; }
+      // Only Google gives reliable postal codes; keep what was typed when there's none
+      if (picked.postalCode) { c.postalCode = picked.postalCode; postalInput.value = picked.postalCode; }
+    }
+    touch();
+  });
+  markRequired(address.input, "address");
+
+  // Services with a price next to each one
+  const services = h("div", { class: "services" });
+  const totalEl = h("span", { class: "total" });
+  const updateTotal = () => { totalEl.textContent = `Total: ${money(servicesTotal(c))}`; };
+  const drawServices = () => {
+    services.replaceChildren(...c.services.map((s, i) => {
+      const type = h("select", { onchange: () => { s.type = type.value; touch(); } },
+        h("option", { value: "" }, "Choose service…"),
+        [...new Set([...data.settings.serviceTypes, s.type].filter(Boolean))].map(t => h("option", { value: t }, t)));
+      type.value = s.type;
+      const price = h("input", { type: "number", min: 0, step: "0.01", placeholder: "0.00", value: s.price,
+        oninput: () => { s.price = price.value; updateTotal(); touch(); } });
+      return h("div", { class: "service-row" },
+        h("label", {}, i === 0 ? "Service type" : "", type),
+        h("label", {}, i === 0 ? priceLabel + " (CAD)" : "", h("div", { class: "money-input" }, h("span", {}, "$"), price)),
+        h("button", { class: "remove", title: "Remove service", onclick: () => {
+          c.services.splice(i, 1); touch(); drawServices();
+        } }, "✕"));
+    }), h("div", { class: "services-foot" },
+      h("button", { onclick: () => { c.services.push({ id: uid(), type: "", price: "" }); touch(); drawServices();
+        services.querySelectorAll(".service-row select")[c.services.length - 1]?.focus(); } }, "+ Add service"),
+      totalEl));
+    updateTotal();
+  };
+  drawServices();
+
+  const tagsInput = h("input", { type: "text", placeholder: "e.g. corner lot, dog, weekly", value: c.tags.join(", "),
+    oninput: e => { c.tags = e.target.value.split(",").map(t => t.trim()).filter(Boolean); touch(); } });
+
+  const contactedBox = h("input", { type: "checkbox", checked: c.contacted,
+    onchange: e => { c.contacted = e.target.checked; touch(); } });
+
+  const form = h("div", { class: "panel form" },
+    h("div", { class: "section-title" }, "Contact"),
+    field("Name", "name", { placeholder: "Full name" }),
+    field("Phone number", "phone", { type: "tel", placeholder: "e.g. 416-555-0123" }),
+    h("label", { class: "full" }, h("span", {}, "Street address", h("span", { class: "req" }, " *")), address.el),
+    cityField,
+    provinceField,
+    postalField,
+    field("Email (optional)", "email", { type: "email" }),
+    isLead && field("Lead source", "leadSource", { options: ["", ...new Set([...data.settings.leadSources, c.leadSource].filter(Boolean))], empty: "Choose source…" }),
+    isLead && h("label", { class: "contacted-toggle" }, contactedBox, "Contacted"),
+
+    h("div", { class: "section-title" }, isLead ? "Services & quote" : "Services"),
+    services,
+
+    h("div", { class: "section-title" }, "Schedule"),
+    field("Next service due", "nextServiceDate", { type: "date" }),
+    field("Next meeting", "nextMeetingDate", { type: "datetime-local" }),
+    field("Reason for meeting", "nextMeetingReason", { full: true, placeholder: "e.g. Give the quote, walk the property…" }),
+
+    h("div", { class: "section-title" }, "Other"),
+    h("label", { class: "full" }, "Tags (comma separated)", tagsInput),
+    field("Extra notes", "notes", { textarea: true, full: true, placeholder: "Gate code, dog in the yard, preferred day…" }),
+  );
+
+  function setKind(kind) {
+    if (kind === c.kind) return;
+    c.kind = kind;
+    if (kind === "customer") { c.becameCustomerAt = new Date().toISOString(); c.contacted = true; }
+    else delete c.becameCustomerAt;
+    touch();
+    view = { name: "detail", id: c.id };
+    main.innerHTML = "";
+    renderDetail();
+    document.querySelectorAll("nav .item").forEach(b => b.classList.toggle("active", b.dataset.view === kind + "s"));
+  }
+
+  // Activity log
+  const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  const logType = h("select", {}, ACTIVITY_TYPES.map(t => h("option", { value: t }, t)));
+  const logDate = h("input", { type: "datetime-local", value: now.toISOString().slice(0, 16) });
+  const logText = h("textarea", { placeholder: "What happened? e.g. Called, sent the quote, wants weekly cuts…" });
+  const logList = h("div");
+  const drawLog = () => {
+    logList.innerHTML = "";
+    const items = [...c.activities].sort((a, b) => b.date.localeCompare(a.date));
+    if (!items.length) logList.append(h("div", { class: "muted" }, "No activity yet."));
+    for (const a of items) logList.append(h("div", { class: "activity" },
+      h("div", { class: "meta" }, h("span", {}, h("b", {}, a.type), " · ", dateLabel(a.date)),
+        h("button", { class: "link del", title: "Delete entry", onclick: async () => {
+          if (!(await ask("Delete this activity?", "Delete", true))) return;
+          c.activities = c.activities.filter(x => x.id !== a.id); touch(); drawLog();
+        } }, "Delete")),
+      h("div", { class: "text" }, a.text)));
+  };
+  const addLog = h("button", { class: "primary", onclick: () => {
+    if (!logText.value.trim()) return logText.focus();
+    c.activities.push({ id: uid(), type: logType.value, date: logDate.value || now.toISOString().slice(0, 16), text: logText.value.trim() });
+    if (CONTACT_TYPES.includes(logType.value) && !c.contacted) { c.contacted = true; contactedBox.checked = true; }
+    logText.value = "";
+    touch();
+    drawLog();
+  } }, "Add to log");
+  drawLog();
+
+  const segmented = h("div", { class: "segmented", title: "Status" },
+    h("button", { class: `lead ${isLead ? "on" : ""}`, onclick: () => setKind("lead") }, "Lead"),
+    h("button", { class: `customer ${!isLead ? "on" : ""}`, onclick: () => setKind("customer") }, "Customer"));
+
+  main.append(
+    h("div", { class: "detail-head" },
+      h("button", { onclick: () => go({ name: c.kind + "s" }) }, "← Back"),
+      h("h1", {}, view.isNew ? (isLead ? "New lead" : "New customer") : c.name || "(no name)"),
+      savedFlag,
+      segmented,
+      h("button", { class: "danger", onclick: async () => {
+        if (!(await ask(`Move ${c.name || "this contact"} to the Trash?\n\nYou can recover it from the Trash for ${TRASH_DAYS} days.`, "Move to Trash", true))) return;
+        c.deletedAt = new Date().toISOString();
+        save();
+        view = { name: "dashboard" };
+        go({ name: c.kind + "s" });
+      } }, "Delete")),
+    h("div", { class: "detail" }, form,
+      h("div", { class: "panel" }, h("h2", {}, "Activity log"), h("div", { class: "log-form" }, logType, logDate, logText, addLog), logList)));
+
+  if (view.isNew) form.querySelector("input").focus();
+}
+
+// ================= Trash =================
+
+function renderTrash() {
+  const items = trashed().sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
+  const restore = c => {
+    delete c.deletedAt;
+    c.updatedAt = new Date().toISOString();
+    save();
+    go({ name: "trash" });
+  };
+  const destroy = async c => {
+    if (!(await ask(`Permanently delete ${c.name || "this contact"}?\n\nThis can't be undone.`, "Delete forever", true))) return;
+    data.contacts = data.contacts.filter(x => x.id !== c.id);
+    save();
+    go({ name: "trash" });
+  };
+  const emptyTrash = async () => {
+    if (!(await ask(`Permanently delete all ${items.length} contacts in the Trash?\n\nThis can't be undone.`, "Empty Trash", true))) return;
+    data.contacts = live();
+    save();
+    go({ name: "trash" });
+  };
+
+  main.append(
+    h("div", { class: "detail-head" }, h("h1", {}, "Trash"),
+      items.length ? h("button", { class: "danger", onclick: emptyTrash }, "Empty Trash") : null),
+    h("p", { class: "muted" }, `Deleted leads and customers stay here for ${TRASH_DAYS} days, then they're deleted automatically.`),
+    items.length ? h("table", {},
+      h("thead", {}, h("tr", {}, ["Name", "Type", "Address", "Phone number", "Deleted", "Deleted forever in", ""].map(t => h("th", {}, t)))),
+      h("tbody", {}, items.map(c => {
+        const left = trashDaysLeft(c);
+        return h("tr", { style: "cursor:default" },
+          h("td", {}, h("b", {}, c.name || "(no name)")),
+          h("td", {}, c.kind === "lead" ? "Lead" : "Customer"),
+          h("td", {}, c.address, c.city ? h("div", { class: "sub" }, c.city) : null),
+          h("td", { class: "nowrap" }, c.phone),
+          h("td", { class: "nowrap" }, dateLabel(c.deletedAt.slice(0, 10))),
+          h("td", { class: "nowrap " + (left <= 7 ? "overdue" : "") }, left === 1 ? "1 day" : `${left} days`),
+          h("td", { class: "nowrap", style: "text-align:right" },
+            h("button", { onclick: () => restore(c) }, "↩ Recover"), " ",
+            h("button", { class: "danger", onclick: () => destroy(c) }, "Delete forever")));
+      })))
+      : h("div", { class: "panel empty" }, "The Trash is empty."));
+}
+
+// ================= Export =================
+
+async function exportToSheets() {
+  if (!api) return notify("Export is available in the desktop app.");
+  if (!canLeave()) return;
+  try {
+    const file = await api.exportSheet({ ...data, contacts: live() }, stats());
+    if (!file) return;
+    if (await ask("Spreadsheet saved:\n" + file +
+      "\n\nOpen Google Sheets now? There, click the folder icon (Open file picker) → Upload, and choose this file.", "Open Google Sheets")) {
+      api.openUrl("https://docs.google.com/spreadsheets/u/0/");
+    }
+  } catch (err) {
+    notify("Export failed: " + err.message);
+  }
+}
+document.getElementById("export-sheets").addEventListener("click", exportToSheets);
+
+// ================= Settings & backup =================
+
+function renderSettings() {
+  const s = data.settings;
+  const listEditor = (label, key, hint) => h("label", {}, label,
+    h("textarea", { rows: Math.max(4, s[key].length + 1), value: s[key].join("\n"),
+      oninput: e => { s[key] = e.target.value.split("\n").map(x => x.trim()).filter(Boolean); save(); } }),
+    h("span", { class: "hint" }, hint));
+
+  const keyInput = h("input", { type: "password", value: s.googleApiKey, placeholder: "Paste your Google Maps API key",
+    oninput: e => { s.googleApiKey = e.target.value.trim(); save(); } });
+
+  const desktopOnly = btn => (api ? btn : null);
+  main.append(h("h1", {}, "Settings & backup"),
+    h("div", { class: "settings-grid" },
+      h("div", { class: "panel settings-grid" },
+        h("h2", {}, "Address search"),
+        h("label", {}, "Google Maps API key (recommended)", keyInput,
+          h("span", { class: "hint" }, "With a key, address suggestions come from Google Maps and fill in the city, province and correct postal code. " +
+            "Without a key, free OpenStreetMap suggestions are used: less complete, and the postal code is left for you to type.")),
+      ),
+      h("div", { class: "panel settings-grid" },
+        h("h2", {}, "Lists"),
+        listEditor("Service types", "serviceTypes", "One per line."),
+        listEditor("Lead sources", "leadSources", "One per line. Shown when you add a new lead."),
+        listEditor("Cities", "cities", "One per line.")),
+      h("div", { class: "panel" },
+        h("h2", {}, "Your data"),
+        h("p", { class: "muted" }, `${live().length} contacts (${trashed().length} in Trash). Everything is saved automatically on this computer, and a dated backup is kept each day you open the app (last 10 days).`),
+        h("div", { class: "row" },
+          desktopOnly(h("button", { onclick: exportToSheets }, "Export to Google Sheets")),
+          desktopOnly(h("button", { onclick: () => api.backup(data) }, "Save backup…")),
+          desktopOnly(h("button", { onclick: async () => {
+            try {
+              const restored = await api.restore();
+              if (!restored || !(await ask(`Replace your current data with this backup (${restored.contacts.length} contacts)?`, "Replace", true))) return;
+              data = { contacts: restored.contacts.map(migrate), settings: { ...defaultSettings(), ...restored.settings } };
+              save(); go({ name: "dashboard" });
+            } catch (err) { notify(err.message); }
+          } }, "Restore backup…")),
+          desktopOnly(h("button", { onclick: () => api.dataFolder() }, "Open data folder"))))));
+}
+
+// ================= Automatic updates =================
+
+if (api?.onUpdate) {
+  const bar = document.getElementById("update-bar");
+  api.onUpdate((state, version) => {
+    if (state === "downloading") {
+      bar.replaceChildren(h("span", {}, `Downloading update ${version}…`));
+    } else {
+      bar.replaceChildren(h("span", {}, `✨ Update ${version} is ready`),
+        h("button", { class: "primary", onclick: () => api.installUpdate() }, "Restart to update"),
+        h("button", { onclick: () => { bar.hidden = true; } }, "Later"));
+    }
+    bar.hidden = false;
+  });
+}
+
+// ================= Login & start =================
+
+// Saved accounts ("Remember me"): the last one is pre-filled, and typing in the
+// email box suggests matching saved emails; clicking one fills in its password too.
+let savedAccounts = [];
+const emailSuggest = document.getElementById("login-suggest");
+
+async function fillSavedLogin() {
+  const emailInput = document.getElementById("login-email");
+  const passwordInput = document.getElementById("login-password");
+  const saved = api ? await api.loadLogin().catch(() => null) : null;
+  savedAccounts = saved?.accounts ?? [];
+  const last = savedAccounts.find(a => a.email === saved?.last);
+  emailInput.value = last?.email ?? "";
+  passwordInput.value = last?.password ?? "";
+  (last?.password ? document.getElementById("login-submit") : last ? passwordInput : emailInput).focus();
+}
+
+function chooseAccount(account) {
+  document.getElementById("login-email").value = account.email;
+  document.getElementById("login-password").value = account.password;
+  emailSuggest.hidden = true;
+  (account.password ? document.getElementById("login-submit") : document.getElementById("login-password")).focus();
+}
+
+let suggestActive = -1, suggestItems = [];
+function showEmailSuggestions() {
+  const typed = document.getElementById("login-email").value.trim().toLowerCase();
+  suggestItems = savedAccounts.filter(a => a.email.toLowerCase().startsWith(typed) && a.email.toLowerCase() !== typed);
+  if (suggestActive >= suggestItems.length) suggestActive = -1;
+  emailSuggest.replaceChildren(...suggestItems.map((a, i) => h("div", {
+    class: i === suggestActive ? "active" : "",
+    onmousedown: e => { e.preventDefault(); chooseAccount(a); },
+  }, h("span", { class: "key" }, "🔑"), a.email)));
+  emailSuggest.hidden = !suggestItems.length;
+}
+
+{
+  const emailInput = document.getElementById("login-email");
+  emailInput.addEventListener("input", () => { suggestActive = -1; showEmailSuggestions(); });
+  emailInput.addEventListener("focus", showEmailSuggestions);
+  emailInput.addEventListener("blur", () => setTimeout(() => { emailSuggest.hidden = true; }, 150));
+  emailInput.addEventListener("keydown", e => {
+    if (emailSuggest.hidden) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      suggestActive = (suggestActive + (e.key === "ArrowDown" ? 1 : -1) + suggestItems.length) % suggestItems.length;
+      showEmailSuggestions();
+    } else if ((e.key === "Enter" || e.key === "Tab") && suggestItems.length) {
+      e.preventDefault();
+      chooseAccount(suggestItems[Math.max(0, suggestActive)]);
+    } else if (e.key === "Escape") emailSuggest.hidden = true;
+  });
+}
+
+const loginEl = document.getElementById("login");
+const loadingEl = document.getElementById("loading");
+const loginMsg = document.getElementById("login-msg");
+let signUpMode = false;
+
+function showLoginMessage(text, type = "error") {
+  loginMsg.textContent = text;
+  loginMsg.className = "login-msg " + type;
+  loginMsg.hidden = !text;
+}
+
+function setLoginMode(signUp) {
+  signUpMode = signUp;
+  document.getElementById("login-sub").textContent = signUp ? "Create your account" : "Sign in to your account";
+  document.getElementById("login-submit").textContent = signUp ? "Create account" : "Sign in";
+  document.getElementById("login-mode").textContent = signUp ? "I already have an account" : "Create an account";
+  document.getElementById("login-password").autocomplete = signUp ? "new-password" : "current-password";
+  showLoginMessage("");
+}
+
+document.getElementById("login-mode").addEventListener("click", () => setLoginMode(!signUpMode));
+document.getElementById("login-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const submit = document.getElementById("login-submit");
+  submit.disabled = true;
+  showLoginMessage("");
+  try {
+    await (signUpMode ? window.cloud.signUp(email, password) : window.cloud.signIn(email, password));
+    if (api) {
+      if (document.getElementById("login-remember").checked) api.saveLogin(email, password);
+      else api.forgetLogin(email);
+    }
+  } catch (err) {
+    showLoginMessage(err.message);
+  } finally {
+    submit.disabled = false;
+  }
+});
+document.getElementById("login-forgot").addEventListener("click", async () => {
+  const email = document.getElementById("login-email").value.trim();
+  if (!email) return showLoginMessage("Type your email first, then click \"Forgot password?\".");
+  try {
+    await window.cloud.resetPassword(email);
+    showLoginMessage("Password reset email sent. Check your inbox (and spam folder).", "info");
+  } catch (err) { showLoginMessage(err.message); }
+});
+document.getElementById("sign-out").addEventListener("click", async () => {
+  if (!canLeave()) return;
+  if (!(await ask("Sign out of Simple CRM?", "Sign out"))) return;
+  await window.cloud.signOut();
+});
+
+const syncStatus = document.getElementById("sync-status");
+const updateOnline = () => { syncStatus.textContent = navigator.onLine ? "☁ Synced to cloud" : "⚠ Offline: changes sync later"; };
+window.addEventListener("online", updateOnline);
+window.addEventListener("offline", updateOnline);
+
+async function start(user) {
+  loginEl.hidden = true;
+  loadingEl.hidden = false;
+  document.getElementById("account-email").textContent = user.email;
+  updateOnline();
+  const local = await load();
+  let started = false;
+
+  window.cloud.subscribe(({ contacts, settings }) => {
+    const cloudEmpty = !contacts.length && !settings;
+    if (!started && cloudEmpty && local.contacts.length && (!local.owner || local.owner === user.uid)) {
+      // First sign-in on this computer: upload the data that was here before
+      data = { ...local, owner: user.uid };
+      save();
+    } else {
+      data = { owner: user.uid, contacts: contacts.map(migrate), settings: { ...defaultSettings(), ...settings } };
+      data.contacts.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      if (api) api.save(data).catch(() => {}); // refresh the local copy
+    }
+    purgeOldTrash();
+    updateCounts();
+    if (!started) {
+      started = true;
+      loadingEl.hidden = true;
+      view = { name: "dashboard" };
+      go(view);
+    } else if (view.name !== "detail") {
+      go(view); // another computer changed something: refresh what's on screen
+    }
+  }, err => {
+    loadingEl.hidden = true;
+    notify("Could not load your data from the cloud: " + err.message);
+  });
+}
+
+window.cloud.onAuth(user => {
+  if (user) return start(user);
+  data = null;
+  view = { name: "dashboard" };
+  main.innerHTML = "";
+  loadingEl.hidden = true;
+  loginEl.hidden = false;
+  setLoginMode(false);
+  fillSavedLogin();
+});
+</script>
+</body>
+</html>
