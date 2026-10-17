@@ -9,6 +9,8 @@ A simple Windows desktop CRM for keeping track of leads and customers on one com
 - Next meeting date/time and reason; dashboard shows upcoming and overdue meetings
 - Activity log per contact (calls, meetings, emails, notes)
 - Search, filter and sort; convert a lead into a customer
+- Appearance modes: Classic, Dark, GreenGlow, Ocean, Sand
+- Trash: recover or permanently delete; auto-deleted after 60 days
 - Export to a formatted spreadsheet for Google Sheets, backups, automatic daily backups (last 10)
 
 ## Run from source
