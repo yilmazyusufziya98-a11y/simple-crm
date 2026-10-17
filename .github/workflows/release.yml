@@ -1,10 +1,13 @@
-# Builds the Windows installer and publishes it as a GitHub Release when a version tag (v1.2.3) is pushed.
+# Builds the Windows installer and publishes it as a GitHub Release (tag v<version>)
+# whenever package.json changes on main. If that version is already released, nothing is replaced.
 # Installed apps check the latest release and update themselves.
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: [package.json]
+  workflow_dispatch:
 
 permissions:
   contents: write
