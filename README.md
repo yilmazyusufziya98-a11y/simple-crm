@@ -26,9 +26,8 @@ Creates `dist/Simple-CRM-Setup-<version>.exe`.
 Data is stored in `%APPDATA%\Simple CRM\crm.json` (backups in the `backups` subfolder).
 
 ## Releasing a new version (automatic updates)
-1. Raise `"version"` in `package.json`.
-2. `npm run dist:win`
-3. Create a GitHub Release tagged `v<version>` and upload these files from `dist/`:
-   `Simple-CRM-Setup-<version>.exe`, `Simple-CRM-Setup-<version>.exe.blockmap` and `latest.yml`.
+1. Raise `"version"` in `package.json` and commit.
+2. Push a tag for it, e.g. `git tag v2.6.0 && git push origin v2.6.0`.
 
-Installed apps check this repository's latest release and update themselves.
+GitHub Actions (`.github/workflows/release.yml`) then builds the Windows installer and publishes it
+as a GitHub Release. Installed apps check the latest release and update themselves.
