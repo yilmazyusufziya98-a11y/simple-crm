@@ -399,6 +399,7 @@ function migrate(c) {
   c.services ??= c.serviceType || c.quotePrice ? [{ id: uid(), type: c.serviceType ?? "", price: c.quotePrice ?? "" }] : [];
   c.leadSource ??= c.source ?? "";
   c.referredBy ??= "";
+  c.phone = formatPhone(c.phone);
   c.nextMeetingDate ??= c.nextDate ?? "";
   c.nextMeetingReason ??= c.nextReason ?? "";
   c.nextServiceDate ??= "";
@@ -423,6 +424,20 @@ function upgradeSettings(settings) {
   }
   return s;
 }
+
+// North American phone numbers: 6474444444 -> 647-444-4444 (also while typing)
+function formatPhone(value) {
+  const raw = String(value ?? "");
+  let digits = raw.replace(/\D/g, "");
+  if (/[a-z]/i.test(raw) || digits.length > 11) return raw; // extensions, international: leave as typed
+  const one = digits.length === 11 && digits[0] === "1";
+  if (one) digits = digits.slice(1);
+  if (digits.length > 10) return raw;
+  const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6)].filter(Boolean);
+  return (one ? "1-" : "") + parts.join("-");
+}
+
+const serviceNames = c => [...new Set(c.services.map(s => s.type).filter(Boolean))].join(", ");
 
 const isWordOfMouth = source => /word of mouth|referral/i.test(source ?? "");
 
@@ -713,6 +728,8 @@ const COLUMNS = [
   { key: "city", label: "City", value: c => c.city.toLocaleLowerCase(), cell: c => c.city },
   { key: "address", label: "Address", value: c => c.address.toLocaleLowerCase(),
     cell: c => [c.address, c.postalCode && h("div", { class: "sub" }, c.postalCode)] },
+  { key: "services", label: "Service type", value: c => serviceNames(c).toLocaleLowerCase(),
+    cell: c => c.services.map(x => x.type).filter(Boolean).map(t => h("div", {}, t)) },
   { key: "nextServiceDate", label: "Next service due", value: c => c.nextServiceDate || null,
     cell: c => c.nextServiceDate && h("span", { class: dueClass(c.nextServiceDate) }, dateLabel(c.nextServiceDate)), nowrap: true },
   { key: "nextMeetingDate", label: "Next meeting due", value: c => c.nextMeetingDate || null,
@@ -949,6 +966,19 @@ function renderDetail() {
   const tagsInput = h("input", { type: "text", placeholder: "e.g. corner lot, dog, weekly", value: c.tags.join(", "),
     oninput: e => { c.tags = e.target.value.split(",").map(t => t.trim()).filter(Boolean); touch(); } });
 
+  // Dashes are added automatically as you type: 647-444-4444
+  const phoneField = field("Phone number", "phone", { type: "tel", placeholder: "e.g. 647-444-4444" });
+  const phoneInput = phoneField.querySelector("input");
+  phoneInput.addEventListener("input", e => {
+    if (e.inputType?.startsWith("delete")) return; // let backspace remove dashes normally
+    const formatted = formatPhone(phoneInput.value);
+    if (formatted !== phoneInput.value) { phoneInput.value = formatted; c.phone = formatted; save(); }
+  });
+  phoneInput.addEventListener("blur", () => {
+    const formatted = formatPhone(phoneInput.value);
+    if (formatted !== c.phone) { phoneInput.value = c.phone = formatted; save(); }
+  });
+
   // Shown only for word-of-mouth leads: who recommended us
   const referredField = field("Referred by", "referredBy", { placeholder: "Who recommended you? e.g. Sarah Lee (neighbour)" });
   referredField.hidden = !isWordOfMouth(c.leadSource);
@@ -959,7 +989,7 @@ function renderDetail() {
   const form = h("div", { class: "panel form" },
     h("div", { class: "section-title" }, "Contact"),
     field("Name", "name", { placeholder: "Full name" }),
-    field("Phone number", "phone", { type: "tel", placeholder: "e.g. 416-555-0123" }),
+    phoneField,
     h("label", { class: "full" }, h("span", {}, "Street address", h("span", { class: "req" }, " *")), address.el),
     cityField,
     provinceField,
