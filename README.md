@@ -4,7 +4,7 @@ A simple Windows desktop CRM for keeping track of leads and customers on one com
 
 ## Features
 - Leads and customers: name, phone, email (optional), address with Google Maps autocomplete, city
-- Lead sources: Facebook ads, Instagram ads, door to door, yard sign, car magnet, Nextdoor, website SEO
+- Lead sources: Facebook ads, Instagram ads, door to door, yard sign, car magnet, Nextdoor, website SEO, word of mouth (with "Referred by")
 - Multiple services per contact with a quote amount (leads) or service price (customers), in CAD
 - Next meeting date/time and reason; dashboard shows upcoming and overdue meetings
 - Activity log per contact (calls, meetings, emails, notes)

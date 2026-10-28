@@ -276,6 +276,7 @@
   .login-card .suggestions div { display: flex; gap: 8px; align-items: center; }
   .login-card .suggestions .key { font-size: 13px; }
   .suggestions[hidden] { display: none; }
+  .form label[hidden] { display: none; }
   nav .account { padding: 8px 10px 4px; font-size: 12px; color: var(--nav-text-dim); word-break: break-all; border-top: 1px solid rgba(255, 255, 255, .1); margin-top: 6px; }
   nav .account .sync { display: block; margin-top: 2px; }
   nav .signout { background: none; border: none; color: var(--nav-text-dim); padding: 2px 10px 0; text-align: left; font-size: 12px; text-decoration: underline; }
@@ -383,7 +384,8 @@ const CONTACT_TYPES = ["Call", "Text message", "Email", "Meeting", "Door knock"]
 
 const defaultSettings = () => ({
   serviceTypes: ["Yard cleanup", "Lawn maintenance", "Weed removal"],
-  leadSources: ["Facebook ads", "Instagram ads", "Door to door", "Yard sign", "Car magnet", "Nextdoor", "Website SEO"],
+  leadSources: ["Facebook ads", "Instagram ads", "Door to door", "Yard sign", "Car magnet", "Nextdoor", "Website SEO", "Word of mouth"],
+  sourcesVersion: 2,
   cities: ["Richmond Hill", "Markham", "Vaughan", "Woodbridge", "Thornhill", "Aurora", "Newmarket"],
   googleApiKey: "",
 });
@@ -396,6 +398,7 @@ let data = null;
 function migrate(c) {
   c.services ??= c.serviceType || c.quotePrice ? [{ id: uid(), type: c.serviceType ?? "", price: c.quotePrice ?? "" }] : [];
   c.leadSource ??= c.source ?? "";
+  c.referredBy ??= "";
   c.nextMeetingDate ??= c.nextDate ?? "";
   c.nextMeetingReason ??= c.nextReason ?? "";
   c.nextServiceDate ??= "";
@@ -411,11 +414,23 @@ function migrate(c) {
   return c;
 }
 
+// Settings saved by older versions keep their own lead source list; add sources introduced later once
+function upgradeSettings(settings) {
+  const s = { ...defaultSettings(), ...settings };
+  if (settings && (settings.sourcesVersion ?? 1) < 2) {
+    if (!s.leadSources.some(x => /word of mouth/i.test(x))) s.leadSources = [...s.leadSources, "Word of mouth"];
+    s.sourcesVersion = 2;
+  }
+  return s;
+}
+
+const isWordOfMouth = source => /word of mouth|referral/i.test(source ?? "");
+
 async function load() {
   try {
     const loaded = api ? await api.load() : JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
     if (loaded) {
-      return { owner: loaded.owner, contacts: (loaded.contacts ?? []).map(migrate), settings: { ...defaultSettings(), ...loaded.settings } };
+      return { owner: loaded.owner, contacts: (loaded.contacts ?? []).map(migrate), settings: upgradeSettings(loaded.settings) };
     }
   } catch (e) { console.error(e); }
   return { contacts: [], settings: defaultSettings() };
@@ -452,7 +467,7 @@ function newContact(kind, leadSource = "") {
   return {
     id: uid(), kind, createdKind: kind,
     name: "", phone: "", email: "", address: "", city: "", province: "ON", postalCode: "",
-    leadSource, services: [{ id: uid(), type: "", price: "" }],
+    leadSource, referredBy: "", services: [{ id: uid(), type: "", price: "" }],
     nextServiceDate: "", nextMeetingDate: "", nextMeetingReason: "",
     tags: [], notes: "", contacted: kind === "customer",
     activities: [], createdAt: now, updatedAt: now,
@@ -668,7 +683,7 @@ function renderDashboard() {
         notContacted.map(c => h("div", { class: "row", onclick: () => go({ name: "detail", id: c.id }) },
           h("div", {},
             h("div", { class: "who" }, c.name),
-            h("div", { class: "muted" }, [c.phone, c.leadSource, `added ${dateLabel(c.createdAt.slice(0, 10)).toLowerCase()}`].filter(Boolean).join(" · "))),
+            h("div", { class: "muted" }, [c.phone, c.leadSource + (isWordOfMouth(c.leadSource) && c.referredBy ? ` (from ${c.referredBy})` : ""), `added ${dateLabel(c.createdAt.slice(0, 10)).toLowerCase()}`].filter(Boolean).join(" · "))),
           h("button", { onclick: e => {
             e.stopPropagation();
             c.contacted = true;
@@ -716,7 +731,7 @@ const listState = {
 
 function matches(c, q) {
   if (!q) return true;
-  const hay = [c.name, c.phone, c.email, c.address, c.city, c.postalCode, c.leadSource, c.notes, c.nextMeetingReason, ...c.tags,
+  const hay = [c.name, c.phone, c.email, c.address, c.city, c.postalCode, c.leadSource, c.referredBy, c.notes, c.nextMeetingReason, ...c.tags,
     ...c.services.map(s => s.type), ...c.activities.map(a => a.text)].join(" ").toLocaleLowerCase();
   return q.toLocaleLowerCase().split(/\s+/).every(word => hay.includes(word));
 }
@@ -934,6 +949,10 @@ function renderDetail() {
   const tagsInput = h("input", { type: "text", placeholder: "e.g. corner lot, dog, weekly", value: c.tags.join(", "),
     oninput: e => { c.tags = e.target.value.split(",").map(t => t.trim()).filter(Boolean); touch(); } });
 
+  // Shown only for word-of-mouth leads: who recommended us
+  const referredField = field("Referred by", "referredBy", { placeholder: "Who recommended you? e.g. Sarah Lee (neighbour)" });
+  referredField.hidden = !isWordOfMouth(c.leadSource);
+
   const contactedBox = h("input", { type: "checkbox", checked: c.contacted,
     onchange: e => { c.contacted = e.target.checked; touch(); } });
 
@@ -946,7 +965,9 @@ function renderDetail() {
     provinceField,
     postalField,
     field("Email (optional)", "email", { type: "email" }),
-    isLead && field("Lead source", "leadSource", { options: ["", ...new Set([...data.settings.leadSources, c.leadSource].filter(Boolean))], empty: "Choose source…" }),
+    isLead && field("Lead source", "leadSource", { options: ["", ...new Set([...data.settings.leadSources, c.leadSource].filter(Boolean))], empty: "Choose source…",
+      after: () => { referredField.hidden = !isWordOfMouth(c.leadSource); } }),
+    isLead && referredField,
     isLead && h("label", { class: "contacted-toggle" }, contactedBox, "Contacted"),
 
     h("div", { class: "section-title" }, isLead ? "Services & quote" : "Services"),
@@ -1165,7 +1186,7 @@ function renderSettings() {
             try {
               const restored = await api.restore();
               if (!restored || !(await ask(`Replace your current data with this backup (${restored.contacts.length} contacts)?`, "Replace", true))) return;
-              data = { contacts: restored.contacts.map(migrate), settings: { ...defaultSettings(), ...restored.settings } };
+              data = { contacts: restored.contacts.map(migrate), settings: upgradeSettings(restored.settings) };
               save(); go({ name: "dashboard" });
             } catch (err) { notify(err.message); }
           } }, "Restore backup…")),
@@ -1317,7 +1338,7 @@ async function start(user) {
       data = { ...local, owner: user.uid };
       save();
     } else {
-      data = { owner: user.uid, contacts: contacts.map(migrate), settings: { ...defaultSettings(), ...settings } };
+      data = { owner: user.uid, contacts: contacts.map(migrate), settings: upgradeSettings(settings) };
       data.contacts.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
       if (api) api.save(data).catch(() => {}); // refresh the local copy
     }

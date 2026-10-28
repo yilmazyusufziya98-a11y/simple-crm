@@ -104,10 +104,11 @@ async function buildWorkbook(data, stats) {
   const lead = wb.addWorksheet("Leads", { properties: { tabColor: { argb: "FFB45309" } } });
   styleSheet(lead, [...contactColumns("Quote amount"),
     { header: "Lead source", key: "source", width: 16 },
+    { header: "Referred by", key: "referredBy", width: 20 },
     { header: "Contacted", key: "contacted", width: 11 },
     { header: "Added", key: "added", width: 13, style: DATE }]);
   leads.forEach(c => {
-    const row = lead.addRow({ ...contactRow(c), source: c.leadSource, contacted: c.contacted ? "Yes" : "No", added: toDate(c.createdAt) });
+    const row = lead.addRow({ ...contactRow(c), source: c.leadSource, referredBy: c.referredBy, contacted: c.contacted ? "Yes" : "No", added: toDate(c.createdAt) });
     if (!c.contacted) row.getCell("contacted").font = { bold: true, color: { argb: "FFC62828" } };
   });
   zebra(lead);
