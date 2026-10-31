@@ -13,6 +13,10 @@ A simple Windows desktop CRM for keeping track of leads and customers on one com
 - Trash: recover or permanently delete; auto-deleted after 60 days
 - Export to a formatted spreadsheet for Google Sheets, backups, automatic daily backups (last 10)
 
+## Web version
+The same app runs in the browser at https://yilmazyusufziya98-a11y.github.io/simple-crm/
+(built by `npm run build:web`, published by `.github/workflows/web.yml`). Same login and data as the desktop app.
+
 ## Run from source
 ```bash
 npm install

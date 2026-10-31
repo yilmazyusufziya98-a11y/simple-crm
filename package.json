@@ -1,14 +1,15 @@
 {
   "name": "simple-crm",
   "productName": "Simple CRM",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "description": "A simple desktop CRM for leads and customers",
   "author": "Yusuf",
   "main": "main.js",
   "scripts": {
     "start": "npm run bundle && electron .",
     "dist:win": "npm run bundle && electron-builder --win --x64 --publish never",
-    "bundle": "esbuild main.js --bundle --platform=node --target=node20 --external:electron --outfile=main.bundle.js && esbuild cloud.js --bundle --format=iife --target=chrome120 --minify --outfile=src/cloud.bundle.js"
+    "bundle": "esbuild main.js --bundle --platform=node --target=node20 --external:electron --outfile=main.bundle.js && esbuild cloud.js --bundle --format=iife --target=chrome120 --minify --outfile=src/cloud.bundle.js",
+    "build:web": "node build-web.js"
   },
   "build": {
     "appId": "com.yusuf.simplecrm",

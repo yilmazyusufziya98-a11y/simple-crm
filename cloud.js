@@ -8,7 +8,7 @@ import {
   sendPasswordResetEmail, signOut, connectAuthEmulator,
 } from "firebase/auth";
 import {
-  initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc,
+  initializeFirestore, persistentLocalCache, persistentSingleTabManager, persistentMultipleTabManager, collection, doc,
   onSnapshot, writeBatch, connectFirestoreEmulator,
 } from "firebase/firestore";
 
@@ -24,7 +24,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 // Local cache: the app keeps working offline and syncs when back online
-const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() }) });
+// In a browser the app may be open in several tabs at once
+const tabManager = window.crmAPI?.isWeb ? persistentMultipleTabManager() : persistentSingleTabManager();
+const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager }) });
 
 // Only used for automated testing against the local Firebase emulator
 if (location.hash === "#emulator") {

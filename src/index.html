@@ -330,6 +330,28 @@
   .theme-card .mini .btn { width: 45%; height: 12px; border-radius: 4px; margin-top: auto; }
   .theme-card .name { padding: 8px 10px; font-weight: 600; color: var(--text); }
 
+  /* Phones and small windows: sidebar becomes a top bar, tables scroll sideways */
+  @media (max-width: 760px) {
+    body { flex-direction: column; height: auto; min-height: 100vh; overflow: auto; }
+    nav { width: auto; flex: none; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 8px; gap: 4px; }
+    nav .brand { padding: 4px 8px; font-size: 15px; }
+    nav .new { margin: 0; padding: 6px 12px; order: 2; }
+    nav .item { width: auto; padding: 6px 10px; gap: 6px; }
+    nav .spacer, nav .export { display: none; }
+    nav .account { display: none; }
+    nav .signout { padding: 6px 8px; }
+    main { overflow: visible; padding: 16px 12px 40px; }
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .tile .value { font-size: 20px; }
+    table { display: block; overflow-x: auto; }
+    .form, .detail { grid-template-columns: minmax(0, 1fr); }
+    .form > *, .detail > * { min-width: 0; }
+    .form input, .form select, .form textarea { width: 100%; min-width: 0; }
+    .service-row { grid-template-columns: 1fr 120px 38px; }
+    .detail-head h1 { flex-basis: 100%; order: -1; }
+    .toolbar select { flex: 1; }
+  }
+
   @media (max-width: 1050px) {
     .dash, .detail { grid-template-columns: 1fr; }
   }
@@ -1208,7 +1230,7 @@ function renderSettings() {
         listEditor("Cities", "cities", "One per line.")),
       h("div", { class: "panel" },
         h("h2", {}, "Your data"),
-        h("p", { class: "muted" }, `${live().length} contacts (${trashed().length} in Trash). Everything is saved automatically on this computer, and a dated backup is kept each day you open the app (last 10 days).`),
+        h("p", { class: "muted" }, `${live().length} contacts (${trashed().length} in Trash). ${api?.isWeb ? "Everything is saved automatically in your cloud account." : "Everything is saved automatically, and a dated backup is kept on this computer each day you open the app (last 10 days)."}`),
         h("div", { class: "row" },
           desktopOnly(h("button", { onclick: exportToSheets }, "Export to Google Sheets")),
           desktopOnly(h("button", { onclick: () => api.backup(data) }, "Save backup…")),
@@ -1220,7 +1242,7 @@ function renderSettings() {
               save(); go({ name: "dashboard" });
             } catch (err) { notify(err.message); }
           } }, "Restore backup…")),
-          desktopOnly(h("button", { onclick: () => api.dataFolder() }, "Open data folder"))))));
+          api?.dataFolder ? h("button", { onclick: () => api.dataFolder() }, "Open data folder") : null))));
 }
 
 // ================= Automatic updates =================
